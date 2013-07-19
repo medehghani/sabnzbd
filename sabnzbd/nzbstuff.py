@@ -605,7 +605,7 @@ class NzbObject(TryList):
     def __init__(self, filename, msgid, pp, script, nzb = None,
                  futuretype = False, cat = None, url=None,
                  priority=NORMAL_PRIORITY, nzbname=None, status="Queued", nzo_info=None,
-                 reuse=False, dup_check=True, inlinefile=None):
+                 reuse=False, dup_check=True):
         TryList.__init__(self)
 
         filename = platform_encode(filename)
@@ -772,7 +772,7 @@ class NzbObject(TryList):
             inpsrc.setByteStream(StringIO(nzb))
             # inpsrc.setEncoding("ISO-8859-1") # Properly set the NZB XML encoding
             try:
-                import traceback
+                #import traceback
                 parser.parse(inpsrc)
             except xml.sax.SAXParseException, err:
                 self.incomplete = True
@@ -784,7 +784,7 @@ class NzbObject(TryList):
             except Exception, err:
                 self.incomplete = True
                 logging.warning(Ta('Invalid NZB file %s, skipping (reason=%s, line=%s)'), filename, err, 0)
-                print "Hello world", traceback.format_exc()
+                #print "Hello world", traceback.format_exc()
 
             if self.incomplete:
                 if cfg.allow_incomplete_nzb():
