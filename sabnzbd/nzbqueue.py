@@ -457,6 +457,14 @@ class NzbQueue(TryList):
             self.resume_nzo(nzo_id)
 
     @synchronized(NZBQUEUE_LOCK)
+    def get_nzo_downpath(self, nzo_id):
+        if nzo_id in self.__nzo_table:
+            nzo = self.__nzo_table[nzo_id]
+            return nzo.downpath
+        else:
+            return None
+        
+    @synchronized(NZBQUEUE_LOCK)
     def resume_nzo(self, nzo_id):
         if nzo_id in self.__nzo_table:
             nzo = self.__nzo_table[nzo_id]

@@ -52,7 +52,7 @@ from sabnzbd.utils.json import JsonWriter
 from sabnzbd.utils.pathbrowser import folders_at_path
 from sabnzbd.misc import loadavg, to_units, diskfree, disktotal, get_ext, \
                          get_filename, int_conv, globber, time_format, remove_all, \
-                         starts_with_path, cat_convert
+                         starts_with_path, cat_convert, sanitize_filename
 from sabnzbd.encoding import xml_name, unicoder, special_fixer, platform_encode, html_escape
 from sabnzbd.postproc import PostProcessor
 from sabnzbd.articlecache import ArticleCache
@@ -300,7 +300,34 @@ def _api_translate(name, output, kwargs):
     """ API: accepts output, value(=acronym) """
     return report(output, keyword='value', data=Tx(kwargs.get('value', '')))
 
+# Helper function
+# Side effect of cherryfile_size is that attribute .value is created
+# which is needed to make add_nzbfile() work
+def cherryfile_size(cherryfile):
+    if hasattr(cherryfile, 'getvalue'):
+        size = cherryfile.length
+    elif hasattr(cherryfile, 'file') and hasattr(cherryfile, 'filename') and cherryfile.filename:
+        # CherryPy 3.2.2 object
+        if hasattr(cherryfile.file, 'file'):
+            cherryfile.value = cherryfile.file.file.read()
+        else:
+            cherryfile.value = cherryfile.file.read()
+        size = len(cherryfile.value)
+    elif hasattr(cherryfile, 'value'):
+        size = len(cherryfile.value)
+    else:
+        size = 0
+    return size
 
+# Helper function
+# Saves an inline file passed in argument
+def inlinefile_save(file, folder):
+    filesize=cherryfile_size(file)
+    if file is not None and filesize and file.filename:
+        #print "FILE NAME:", file.filename, "FILE VALUE:", file.value
+        sanitized_filename = sanitize_filename(platform_encode(file.filename)) # handle empty
+        sabnzbd.save_data(file.value, sanitized_filename, folder, False)
+    
 def _api_addfile(name, output, kwargs):
     """ API: accepts name, output, pp, script, cat, priority, nzbname """
     # When uploading via flash it will send the nzb in a kw arg called Filedata
@@ -309,22 +336,38 @@ def _api_addfile(name, output, kwargs):
     # Normal upload will send the nzb in a kw arg called nzbfile
     if name is None or isinstance(name, str) or isinstance(name, unicode):
         name = kwargs.get('nzbfile')
-    if hasattr(name, 'getvalue'):
-        #Side effect of next line is that attribute .value is created
-        #which is needed to make add_nzbfile() work
-        size = name.length
-    elif hasattr(name, 'value'):
-        size = len(name.value)
-    else:
-        size = 0
+    size = cherryfile_size(name)
     if name is not None and size and name.filename:
         cat = kwargs.get('cat')
         xcat = kwargs.get('xcat')
+        inlinefile = kwargs.get('inlinefile') # Inline files
+        
+        # Inline files
+        # Should set priority to PAUSED_PRIORITY while saving the Blob files to avoid inconsistencies
+        target_priority = DEFAULT_PRIORITY if kwargs.get('priority') is None else kwargs.get('priority')
+        priority = PAUSED_PRIORITY if inlinefile is not None else kwargs.get('priority')
+        
         if not cat and xcat:
             # Indexer category, so do mapping
             cat = cat_convert(xcat)
+        
+        #logging.info("kwargs: %s", kwargs)
+        
         res = sabnzbd.add_nzbfile(name, kwargs.get('pp'), kwargs.get('script'), cat,
-                            kwargs.get('priority'), kwargs.get('nzbname'))
+                            priority, kwargs.get('nzbname'))
+
+        # Inline files
+        if res[0] == 0:        
+            if inlinefile:
+                nzo_id = res[1][0]
+                downpath = NzbQueue.do.get_nzo_downpath(nzo_id)
+                if isinstance(inlinefile, list):
+                    for fileelement in inlinefile:
+                        inlinefile_save(fileelement, downpath)
+                else:
+                    inlinefile_save(inlinefile, downpath)
+                sabnzbd.nzbqueue.set_priority(nzo_id, target_priority) # Resume
+            
         return report(output, keyword='', data={'status':res[0]==0, 'nzo_ids' : res[1]}, compat=True)
     else:
         return report(output, _MSG_NO_VALUE)
