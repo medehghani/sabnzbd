@@ -509,13 +509,19 @@ def _api_history(name, output, kwargs):
             return report(output)
         else:
             return report(output, _MSG_NO_VALUE)
-    elif not name:
+    elif not name and not value:
         history, pnfo_list, bytespersec = build_header(True)
         grand, month, week, day = BPSMeter.do.get_sums()
         history['total_size'], history['month_size'], history['week_size'], history['day_size'] = \
                to_units(grand), to_units(month), to_units(week), to_units(day)
-        history['slots'], fetched_items, history['noofslots'] = build_history(start=start, limit=limit, verbose=True, search=search, failed_only=failed_only)
+        history['slots'], fetched_items, history['noofslots'] = build_history(start=start, limit=limit, verbose=True, search=search, failed_only=failed_only, value=value)
         return report(output, keyword='history', data=remove_callable(history))
+    # Single item return
+    elif not name and value:
+        history_db = cherrypy.thread_data.history_db
+        history_list, fetched_items, total_items = history_db.fetch_history()
+        item = [nzo for nzo in history_list if nzo['nzo_id'] == value]
+        return report(output, keyword='history', data=item)
     else:
         return report(output, _MSG_NOT_IMPLEMENTED)
 
@@ -528,6 +534,33 @@ def _api_get_files(name, output, kwargs):
     else:
         return report(output, _MSG_NO_VALUE)
 
+# Adds support for downloaded file reading (support limited to single file NZB of image/jpeg type)
+def _api_read_file(name, output, kwargs):
+    """ API: accepts output, value(=nzo_id) """
+    value = kwargs.get('value')
+    history_db = cherrypy.thread_data.history_db
+    history_list, fetched_items, total_items = history_db.fetch_history()
+    [item] = [nzo for nzo in history_list if nzo['nzo_id'] == value]
+    if item and item['storage']:
+        path = item['storage']
+        if not os.path.exists(path):
+            return report(output, _MSG_NO_PATH)
+        try:
+            _f = open(path, 'rb')
+            data = _f.read()
+            _f.close()
+        except:
+            return report(output, _MSG_NO_PATH)
+        #PostProcessor.do.delete(value)
+        history_db.remove_history(value)
+        os.remove(item['storage'])
+        os.rmdir(os.path.dirname(item['storage']))
+    else:
+        return report(output, _MSG_NO_ITEM)
+    if data:
+        return report(output, data=data, contenttype="image/jpeg") #image/jpeg
+    else:
+        return report(output, _MSG_NO_PATH)
 
 _RE_NEWZBIN_URL = re.compile(r'/browse/post/(\d+)')
 def _api_addid(names, output, kwargs):
@@ -898,7 +931,7 @@ _api_config_table = {
 
 
 #------------------------------------------------------------------------------
-def report(output, error=None, keyword='value', data=None, callback=None, compat=False):
+def report(output, error=None, keyword='value', data=None, callback=None, compat=False, contenttype="text/plain"):
     """ Report message in json, xml or plain text
         If error is set, only an status/error report is made.
         If no error and no data, only a status report is made.
@@ -936,7 +969,7 @@ def report(output, error=None, keyword='value', data=None, callback=None, compat
         response = '<?xml version="1.0" encoding="UTF-8" ?>\n%s\n' % status_str
 
     else:
-        content = "text/plain"
+        content = contenttype
         if error:
             response = "error: %s\n" % error
         elif compat or data is None:
