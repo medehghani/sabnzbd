@@ -931,15 +931,8 @@ _api_config_table = {
 
 
 
-<<<<<<< HEAD
+
 def report(output, error=None, keyword='value', data=None, callback=None, compat=False, contenttype="text/plain"):
-||||||| parent of 492bf3f... NEW: api_read_file & api_history(value)
-#------------------------------------------------------------------------------
-def report(output, error=None, keyword='value', data=None, callback=None, compat=False):
-=======
-#------------------------------------------------------------------------------
-def report(output, error=None, keyword='value', data=None, callback=None, compat=False, contenttype="text/plain"):
->>>>>>> 492bf3f... NEW: api_read_file & api_history(value)
     """ Report message in json, xml or plain text
         If error is set, only an status/error report is made.
         If no error and no data, only a status report is made.
