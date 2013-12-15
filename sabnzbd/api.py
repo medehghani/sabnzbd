@@ -509,19 +509,13 @@ def _api_history(name, output, kwargs):
             return report(output)
         else:
             return report(output, _MSG_NO_VALUE)
-    elif not name and not value:
+    elif not name:
         history, pnfo_list, bytespersec = build_header(True)
         grand, month, week, day = BPSMeter.do.get_sums()
         history['total_size'], history['month_size'], history['week_size'], history['day_size'] = \
                to_units(grand), to_units(month), to_units(week), to_units(day)
-        history['slots'], fetched_items, history['noofslots'] = build_history(start=start, limit=limit, verbose=True, search=search, failed_only=failed_only, value=value)
+        history['slots'], fetched_items, history['noofslots'] = build_history(start=start, limit=limit, verbose=True, search=search, failed_only=failed_only)
         return report(output, keyword='history', data=remove_callable(history))
-    # Single item return
-    elif not name and value:
-        history_db = cherrypy.thread_data.history_db
-        history_list, fetched_items, total_items = history_db.fetch_history()
-        item = [nzo for nzo in history_list if nzo['nzo_id'] == value]
-        return report(output, keyword='history', data=item)
     else:
         return report(output, _MSG_NOT_IMPLEMENTED)
 
@@ -534,35 +528,9 @@ def _api_get_files(name, output, kwargs):
     else:
         return report(output, _MSG_NO_VALUE)
 
-# Adds support for downloaded file reading (support limited to single file NZB of image/jpeg type)
-def _api_read_file(name, output, kwargs):
-    """ API: accepts output, value(=nzo_id) """
-    value = kwargs.get('value')
-    history_db = cherrypy.thread_data.history_db
-    history_list, fetched_items, total_items = history_db.fetch_history()
-    [item] = [nzo for nzo in history_list if nzo['nzo_id'] == value]
-    if item and item['storage']:
-        path = item['storage']
-        if not os.path.exists(path):
-            return report(output, _MSG_NO_PATH)
-        try:
-            _f = open(path, 'rb')
-            data = _f.read()
-            _f.close()
-        except:
-            return report(output, _MSG_NO_PATH)
-        #PostProcessor.do.delete(value)
-        history_db.remove_history(value)
-        os.remove(item['storage'])
-        os.rmdir(os.path.dirname(item['storage']))
-    else:
-        return report(output, _MSG_NO_ITEM)
-    if data:
-        return report(output, data=data, contenttype="image/jpeg") #image/jpeg
-    else:
-        return report(output, _MSG_NO_PATH)
 
 _RE_NEWZBIN_URL = re.compile(r'/browse/post/(\d+)')
+
 def _api_addid(names, output, kwargs):
     """ API: accepts name, output, pp, script, cat, priority, nzbname """
     pp = kwargs.get('pp')
@@ -861,6 +829,7 @@ def _api_config_undefined(output, kwargs):
 
 #------------------------------------------------------------------------------
 _api_table = {
+<<<<<<< HEAD
     'get_config'      : _api_get_config,
     'set_config'      : _api_set_config,
     'del_config'      : _api_del_config,
@@ -903,6 +872,100 @@ _api_table = {
     'reset_quota'     : _api_reset_quota,
     'test_email'      : _api_test_email,
     'test_notif'      : _api_test_notif,
+||||||| parent of 95acd57... Revert "NEW: api_read_file & api_history(value)"
+    'get_config'      : (_api_get_config, 3),
+    'set_config'      : (_api_set_config, 3),
+    'del_config'      : (_api_del_config, 3),
+    'qstatus'         : (_api_qstatus, 2),
+    'queue'           : (_api_queue, 2),
+    'options'         : (_api_options, 2),
+    'translate'       : (_api_translate, 2),
+    'addfile'         : (_api_addfile, 1),
+    'retry'           : (_api_retry, 2),
+    'addlocalfile'    : (_api_addlocalfile, 1),
+    'switch'          : (_api_switch, 2),
+    'change_cat'      : (_api_change_cat, 2),
+    'change_script'   : (_api_change_script, 2),
+    'change_opts'     : (_api_change_opts, 2),
+    'fullstatus'      : (_api_fullstatus, 2),
+    'history'         : (_api_history, 2),
+    'get_files'       : (_api_get_files, 2),
+    'read_file'       : (_api_read_file, 2),
+    'addurl'          : (_api_addid, 1),
+    'addid'           : (_api_addid, 1),
+    'pause'           : (_api_pause, 2),
+    'resume'          : (_api_resume, 2),
+    'shutdown'        : (_api_shutdown, 3),
+    'warnings'        : (_api_warnings, 2),
+    'config'          : (_api_config, 2),
+    'get_cats'        : (_api_get_cats, 2),
+    'get_scripts'     : (_api_get_scripts, 2),
+    'version'         : (_api_version, 1),
+    'auth'            : (_api_auth, 1),
+    'newzbin'         : (_api_newzbin, 2),
+    'restart'         : (_api_restart, 3),
+    'restart_repair'  : (_api_restart_repair, 2),
+    'disconnect'      : (_api_disconnect, 2),
+    'osx_icon'        : (_api_osx_icon, 3),
+    'rescan'          : (_api_rescan, 2),
+    'eval_sort'       : (_api_eval_sort, 2),
+    'watched_now'     : (_api_watched_now, 2),
+    'resume_pp'       : (_api_resume_pp, 2),
+    'rss_now'         : (_api_rss_now, 2),
+    'browse'          : (_api_browse, 2),
+    'reset_quota'     : (_api_reset_quota, 2),
+    'test_email'      : (_api_test_email, 2),
+    'test_notif'      : (_api_test_notif, 2),
+    'test_growl'      : (_api_test_growl, 2),
+    'test_osd'        : (_api_test_osd, 2),
+    'test_prowl'      : (_api_test_prowl, 2)
+=======
+    'get_config'      : (_api_get_config, 3),
+    'set_config'      : (_api_set_config, 3),
+    'del_config'      : (_api_del_config, 3),
+    'qstatus'         : (_api_qstatus, 2),
+    'queue'           : (_api_queue, 2),
+    'options'         : (_api_options, 2),
+    'translate'       : (_api_translate, 2),
+    'addfile'         : (_api_addfile, 1),
+    'retry'           : (_api_retry, 2),
+    'addlocalfile'    : (_api_addlocalfile, 1),
+    'switch'          : (_api_switch, 2),
+    'change_cat'      : (_api_change_cat, 2),
+    'change_script'   : (_api_change_script, 2),
+    'change_opts'     : (_api_change_opts, 2),
+    'fullstatus'      : (_api_fullstatus, 2),
+    'history'         : (_api_history, 2),
+    'get_files'       : (_api_get_files, 2),
+    'addurl'          : (_api_addid, 1),
+    'addid'           : (_api_addid, 1),
+    'pause'           : (_api_pause, 2),
+    'resume'          : (_api_resume, 2),
+    'shutdown'        : (_api_shutdown, 3),
+    'warnings'        : (_api_warnings, 2),
+    'config'          : (_api_config, 2),
+    'get_cats'        : (_api_get_cats, 2),
+    'get_scripts'     : (_api_get_scripts, 2),
+    'version'         : (_api_version, 1),
+    'auth'            : (_api_auth, 1),
+    'newzbin'         : (_api_newzbin, 2),
+    'restart'         : (_api_restart, 3),
+    'restart_repair'  : (_api_restart_repair, 2),
+    'disconnect'      : (_api_disconnect, 2),
+    'osx_icon'        : (_api_osx_icon, 3),
+    'rescan'          : (_api_rescan, 2),
+    'eval_sort'       : (_api_eval_sort, 2),
+    'watched_now'     : (_api_watched_now, 2),
+    'resume_pp'       : (_api_resume_pp, 2),
+    'rss_now'         : (_api_rss_now, 2),
+    'browse'          : (_api_browse, 2),
+    'reset_quota'     : (_api_reset_quota, 2),
+    'test_email'      : (_api_test_email, 2),
+    'test_notif'      : (_api_test_notif, 2),
+    'test_growl'      : (_api_test_growl, 2),
+    'test_osd'        : (_api_test_osd, 2),
+    'test_prowl'      : (_api_test_prowl, 2)
+>>>>>>> 95acd57... Revert "NEW: api_read_file & api_history(value)"
 }
 
 _api_queue_table = {
@@ -930,7 +993,7 @@ _api_config_table = {
 }
 
 
-#------------------------------------------------------------------------------
+
 def report(output, error=None, keyword='value', data=None, callback=None, compat=False, contenttype="text/plain"):
     """ Report message in json, xml or plain text
         If error is set, only an status/error report is made.
@@ -969,7 +1032,7 @@ def report(output, error=None, keyword='value', data=None, callback=None, compat
         response = '<?xml version="1.0" encoding="UTF-8" ?>\n%s\n' % status_str
 
     else:
-        content = contenttype
+        content = "text/plain"
         if error:
             response = "error: %s\n" % error
         elif compat or data is None:
